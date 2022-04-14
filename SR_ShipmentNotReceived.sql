@@ -80,15 +80,17 @@ IF @FilterType = 'State'
 
 IF @VendorID = 'All'  
      BEGIN
-  	  --Get all shipments during time period
-	  SELECT sh.ShipmentNo, sh.ShipmentType, l.LocationNo +' - '+ l.LocationName as Location, sh.ToLocationNo, 
+  	  --Get all (non-supply) shipments during time period
+	  SELECT distinct sh.ShipmentNo, sh.ShipmentType, l.LocationNo +' - '+ l.LocationName as Location, sh.ToLocationNo, 
 	  convert(varchar(10),sh.DateTransferred,101) as ShipmentDate
 	  into #ShipmentAll
 	  FROM [rILS_Data].[dbo].[ShipmentHeader] sh
+      join [rILS_Data].[dbo].[ShipmentDetail] sd on sh.ShipmentNo = sd.ShipmentNo and sh.ShipmentType = sd.ShipmentType
 	  join #LOCS l on sh.ToLocationNo = l.LocationNo
 	  where sh.DateTransferred >= @StartDate 
 	  and sh.DateTransferred < @EndDate
 	  and sh.ShipmentType in ('W','R') --Warehouse / WMS and Drop Shipment
+      and sd.Company <> 'SUP' --Exclude/ignore supply shipments (never received)
 	  
 	  --get everything that has be received/partially first
 	  SELECT a.ShipmentNo, a.ShipmentType, SUM(rd.qty) as qty
@@ -130,15 +132,17 @@ IF @VendorID = 'All'
 ELSE IF @VendorID = 'CDC'
     --CDC ONLY
 	BEGIN
-       --Get all shipments during time period for CDC 
-	  SELECT sh.ShipmentNo, sh.ShipmentType, l.LocationNo +' - '+ l.LocationName as Location, sh.ToLocationNo, 
+       --Get all (non-supply) shipments during time period for CDC 
+	  SELECT distinct sh.ShipmentNo, sh.ShipmentType, l.LocationNo +' - '+ l.LocationName as Location, sh.ToLocationNo, 
 	  convert(varchar(10),sh.DateTransferred,101) as ShipmentDate
 	  into #ShipmentAllCDC
 	  FROM [rILS_Data].[dbo].[ShipmentHeader] sh
+      join [rILS_Data].[dbo].[ShipmentDetail] sd on sh.ShipmentNo = sd.ShipmentNo and sh.ShipmentType = sd.ShipmentType
 	  join #LOCS l on sh.ToLocationNo = l.LocationNo
 	  where sh.DateTransferred >= @StartDate 
 	  and sh.DateTransferred < @EndDate
 	  and sh.ShipmentType in ('W') --Warehouse / WMS / CDC
+      and sd.Company <> 'SUP' --Exclude/ignore supply shipments (never received)
 	  
 	  --get everything that has be received/partially first
 	  SELECT a.ShipmentNo, a.ShipmentType ,SUM(rd.qty) as qty
